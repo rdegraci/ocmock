@@ -1,16 +1,25 @@
+#!/usr/bin/env ruby
    
-class ReleaseManager
+class Builder
 
     def initialize
         @env = Environment.new()
         @worker = CompositeWorker.new([Logger.new(), Executer.new()])
     end              
     
-    def makeAll
+    def makeRelease
+      createWorkingDirectories
+      downloadSource
+      copySource
+      buildModules
+      createPackage "ocmock-2.0.1.dmg", "OCMock 2.0.1" 
+      openPackageDir
+    end
+    
+    def justBuild
       createWorkingDirectories
       downloadSource
       buildModules
-      createPackage "ocmock-2.0.1.dmg", "OCMock 2.0.1" 
       openPackageDir
     end
     
@@ -22,7 +31,9 @@ class ReleaseManager
     
     def downloadSource
         @worker.run("git archive master | tar -x -v -C #{@env.sourcedir}")
-        @worker.chdir(@env.sourcedir) 
+    end
+
+    def copySource
         @worker.run("cp -R #{@env.sourcedir}/Source #{@env.productdir}")
     end
 
@@ -77,7 +88,7 @@ end
 
 class Environment
     def initialize()
-        @tmpdir = "/tmp/makerelease.#{Process.pid}"
+        @tmpdir = "/tmp/ocmock.#{Process.pid}"
         @sourcedir = tmpdir + "/Source"
         @productdir = tmpdir + "/Products"
         @packagedir = tmpdir
@@ -141,5 +152,14 @@ class CompositeWorker
 end    
 
 
-ReleaseManager.new.makeAll
+if /Tools$/.match(Dir.pwd)
+  Dir.chdir("..")
+end
+
+if ARGV[0] == '-r' 
+  Builder.new.makeRelease
+else
+  Builder.new.justBuild
+end
+
 
